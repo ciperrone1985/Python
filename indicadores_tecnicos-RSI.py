@@ -44,7 +44,7 @@ def RSI (DF, n=14): # DF = acao, n=14 período a ser analisado
     df["mediaperda"] = df["perda"].ewm(alpha=1/n, min_periods=n).mean()  # preciso da média de perdas
     df["rs"] = df["mediaganho"]/df["mediaperda"]
     df["rsi"] = 100 - (100/(1+df["rs"])) # aqui consigo chegar no valor do RSI
-    return ["rsi"]
+    return df["rsi"]
 
 # Inicia o loop de verificação para cada ação
 for acoes in ohclv_data:
