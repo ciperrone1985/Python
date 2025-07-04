@@ -8,7 +8,7 @@ Este indicador verifica de 0 a 100 o valor da força dentro de uma tendência co
     50-75: tendência mto forte
     75-100: tendência extremamente forte (mto raro)
     
-    Para ver como é feito o script do macd é necessário acessar o site do tradeview. Lá mostra como é feito o 
+    Para ver como é feito o script do ADX é necessário acessar o site do tradeview. Lá mostra como é feito o 
     cálculo para apresentar no gráfico
     
 Para calcular o ADX preciso calcular o TR, depois preciso calcular o movimento positivo e movimento negativo  
