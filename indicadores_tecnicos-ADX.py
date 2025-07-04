@@ -75,8 +75,14 @@ def ADX(DF,n=14):
     # Calcula o valor do indicador de direção positivo
     df["+di"] = 100 * (df["+dm"]/df["ATR"]).ewm(span=n, min_periods=n).mean()
     
+    # para yahoo finance - indicador positivo
+    # df["+di"] = 100 * (df["+dm"]/df["ATR"]).ewm(com=n, min_periods=n).mean()
+    
     # Calcula o valor do indicador de direção negativo
     df["-di"] = 100 * (df["-dm"]/df["ATR"]).ewm(span=n, min_periods=n).mean()
+    
+    # para yahoo finance - indicador negativo
+    #df["-di"] = 100 * (df["-dm"]/df["ATR"]).ewm(com=n, min_periods=n).mean()
     
     #Calcula o valor de ADX baseado no valor absoludo de +di e -di baseado na média móvel exponencial
     df["ADX"] = 100 * abs((df["+di"]- df["-di"]) / (df["+di"] + df["-di"])).ewm(span=n, min_periods=n).mean()
