@@ -25,6 +25,7 @@ Site de apoio: https://stackoverflow.com/questions/63020750/how-to-find-average-
 # importando as bibliotecas
 import yfinance as yf
 import numpy as np
+import pandas as pd
 
 # Ações a serem analisadas
 acoes = ["VALE", "BTC-USD"]
@@ -56,7 +57,7 @@ def ATR(DF, n=14):
     return df["ATR"]
 
 # Utilizando função do ADX
-def ADX(DF,n=20):
+def ADX(DF,n=14):
     df= DF.copy() # irá fazer a cópia da base de dados
     
     # chama função do ATR
@@ -66,10 +67,10 @@ def ADX(DF,n=20):
     df["descida"] = df["Low"] - df["Low"].shift(1) # Mín - Mín anterior
     
     #Irá verificar se está em movimento de subida, caso seja contrário irá retornar 0
-    df["+dm"] = np.where((df["subida"]>df["descida"] & df["subida"]>0),df["subida"],0) 
+    df["+dm"] = np.where((df["subida"] > df["descida"]) & (df["subida"] > 0),df["subida"], 0)
 
     #Irá verificar se está em movimento de descida, caso seja contrário irá retornar 0
-    df["-dm"] = np.where((df["descida"]>df["subida"] & df["descida"]>0),df["descida"],0)     
+    df["-dm"] = np.where((df["descida"] > df["subida"]) & (df["descida"] > 0),df["descida"], 0)
     
     # Calcula o valor do indicador de direção positivo
     df["+di"] = 100 * (df["+dm"]/df["ATR"]).ewm(span=n, min_periods=n).mean()
@@ -79,7 +80,10 @@ def ADX(DF,n=20):
     
     #Calcula o valor de ADX baseado no valor absoludo de +di e -di baseado na média móvel exponencial
     df["ADX"] = 100 * abs((df["+di"]- df["-di"]) / (df["+di"] + df["-di"])).ewm(span=n, min_periods=n).mean()
-    return df["ADX"]
+    
+    # Indica qual o nível da força da tendência:
+    df["forca_tendencia"] = pd.cut(df["ADX"],bins=[0,25,50,75,100], right=False,labels=["fraca", "forte","mto forte","extremamente forte"])
+    return df.loc[:,["ADX", "forca_tendencia"]]
 
 for acoes in ohlcv_data:
-    ohlcv_data[acoes]["ADX"] = ADX(ohlcv_data[acoes],20)
+    ohlcv_data[acoes][["ADX","forca_tendencia"]] = ADX(ohlcv_data[acoes],20)
