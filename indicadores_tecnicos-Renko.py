@@ -67,10 +67,11 @@ def renko_DF (DF, hora_df):
     
     # Associando a tabela à função Renko
     df2 = Renko(df)
-    df2.brick_size = 3*round(ATR(hora_df,120).iloc[-1],0) #Irá pegar o último objeto
+    df2.brick_size = 3 * round(ATR(hora_df, 120).iloc[-1], 0)
     renko_df = df2.get_ohlc_data()
-    renko_df["esta_em_tendencia"] = pd.cut(df["renko_df"],bins=[True,False], right=False,labels=["verde,vermelho"])
-    return renko_df.loc[:,["forca_tendencia"]]
-    
+    renko_df["esta_em_tendencia"] = renko_df["uptrend"].map({True: "sim",False: "não"})
+    renko_df.drop("uptrend", axis = 1, inplace=True)
+    return renko_df
+
 for acoes in ohlcv_data:
     renko_data[acoes] = renko_DF(ohlcv_data[acoes], hora_data[acoes])
