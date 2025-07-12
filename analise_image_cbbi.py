@@ -34,7 +34,7 @@ import pandas as pd
 import pytesseract
 
 # Função para baixar os dados de CBBI
-URL = "https://api.colintalkscrypto.com/cbbi/all"  # Verifique se este é o endpoint correto
+URL = "https://colintalkscrypto.com/cbbi/"  # Verifique se este é o endpoint correto
 
 def baixar_dados(url: str = URL):
     """Baixa os dados JSON do CBBI e retorna o objeto Python."""
@@ -55,9 +55,12 @@ def plotar_cbbi(dados: dict):
     plt.xlabel("Tempo")
     plt.ylabel("CBBI")
     plt.title("CBBI histórico")
+    
+def imagem_para_tabela(caminho_imagem: str) -> pd.DataFrame:
     plt.grid(True)
     plt.show()
-    
+
+
 def imagem_para_tabela(caminho_imagem: str) -> pd.DataFrame:
     """Converte uma imagem contendo uma tabela em um DataFrame.
 
@@ -70,6 +73,12 @@ def imagem_para_tabela(caminho_imagem: str) -> pd.DataFrame:
     texto = pytesseract.image_to_string(imagem, lang="por")
     linhas = [linha.strip() for linha in texto.splitlines() if linha.strip()]
     dados = [linha.split() for linha in linhas]
+    return pd.DataFrame(dados)
+
+
+if __name__ == "__main__":
+    dados = baixar_dados()
+    plotar_cbbi(dados)
     return pd.DataFrame(dados)    
 
 if __name__ == "__main__":
