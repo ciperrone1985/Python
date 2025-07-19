@@ -1,35 +1,47 @@
 # -*- coding: utf-8 -*-
 """
 Created on Sat Jul 19 17:06:25 2025
-Analisa e classifica o indicador de volatidade 
+Analisa o índice de confiança
+
 @author: Cintia Perrone
 """
+# Importando bibliotecas necessárias
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import pandas as pd
 
-# Importando biblioteca necessária
-import requests
-import matplotlib.pyplot as plt
+# Caminho onde o driver do chrome está instalado
+CHROMEDRIVER_PATH = r"F:\Instaladores\chromedriver-win64\chromedriver.exe"
 
-# Definindo URL
-URL = 'https://colintalkscrypto.com/cbbi/'
+# URL utilizada
+URL = "https://colintalkscrypto.com/cbbi/"
 
-def baixar_dados(url: str = URL):
-    """Baixa os dados JSON do CBBI e retorna o objeto Python."""
-    resposta = requests.get(url, timeout=30)
-    resposta.raise_for_status()
-    return resposta.json()
+options = webdriver.ChromeOptions()
+options.add_argument("--headless") #irá rodar em segundo plano
+options.add_argument("--disable-gpu") # desabilita gráficos
 
-def plotar_cbbi(dados: dict):
-    """Plota o CBBI a partir do dicionário recebido da API."""
-    tempos = [ponto['time'] for ponto in dados]
-    valores = [ponto['cbbi'] for ponto in dados]
-    plt.figure(figsize=(10, 5))
-    plt.plot(tempos, valores)
-    plt.xlabel("Tempo")
-    plt.ylabel("CBBI")
-    plt.title("CBBI histórico")
-    plt.grid(True)
-    plt.show()
+# Acessa o serviço e o driver com as opções acima:
+servico = Service(CHROMEDRIVER_PATH)
+driver = webdriver.Chrome(service=servico, options=options)
 
-if __name__ == "__main__":
-    dados = baixar_dados()
-    plotar_cbbi(dados)
+# Caso dê algum problema irá fechar o navegador
+try:
+    driver.get(URL)
+    wait = WebDriverWait(driver, 15) # irá aguardar 15 segundos
+    
+    # aguarda até o indicador ficar visível
+    indicador_confianca = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "h1.title.confidence-score-value")))
+    data_indicador = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "h2.subtitle")))
+    
+    #Extraindo o valor para texto
+    indicador_confianca = indicador_confianca.text.strip()
+    data_indicador = data_indicador.text.strip()
+
+finally:
+    driver.quit()
+    
+# Adicionando os indicadores em uma tabela
+df = pd.DataFrame({'indicador_confianca': [indicador_confianca], 'data_indicador': [data_indicador]})
