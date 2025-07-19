@@ -1,0 +1,35 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Jul 19 17:06:25 2025
+Analisa e classifica o indicador de volatidade 
+@author: Cintia Perrone
+"""
+
+# Importando biblioteca necessária
+import requests
+import matplotlib.pyplot as plt
+
+# Definindo URL
+URL = 'https://colintalkscrypto.com/cbbi/'
+
+def baixar_dados(url: str = URL):
+    """Baixa os dados JSON do CBBI e retorna o objeto Python."""
+    resposta = requests.get(url, timeout=30)
+    resposta.raise_for_status()
+    return resposta.json()
+
+def plotar_cbbi(dados: dict):
+    """Plota o CBBI a partir do dicionário recebido da API."""
+    tempos = [ponto['time'] for ponto in dados]
+    valores = [ponto['cbbi'] for ponto in dados]
+    plt.figure(figsize=(10, 5))
+    plt.plot(tempos, valores)
+    plt.xlabel("Tempo")
+    plt.ylabel("CBBI")
+    plt.title("CBBI histórico")
+    plt.grid(True)
+    plt.show()
+
+if __name__ == "__main__":
+    dados = baixar_dados()
+    plotar_cbbi(dados)
