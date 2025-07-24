@@ -1,0 +1,187 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Jul 14 17:06:25 2025
+Analisa e classifica todos os índices apresentados no CBBI e exporta em pdf
+
+@author: Cintia Perrone
+
+verificar se possui as bibliotecas instaladas:
+selenium
+pandas
+matplotlib
+seaborn
+fpdf
+datetime
+pdf2image
+os
+
+PAra este script é necessário instalar o Poppler, depois de instalar é necessário declarar variável =o driver
+é necessário adicionar a pasta bin em path nas variáveis de ambiente
+F:\Instaladores\poppler-24.08.0\Library\bin
+"""
+# Importando bibliotecas necessárias
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from fpdf import FPDF
+from datetime import datetime
+from pdf2image import convert_from_path
+import os
+
+#CAminho onde está poppler para usar o pdf. r é utilizado para não colocar \\ ou /
+os.environ["PATH"] += os.pathsep + r"F:\Instaladores\poppler-24.08.0\Library\bin"
+
+# Caminho onde o driver do chrome está instalado
+CHROMEDRIVER_PATH = r"F:\Instaladores\chromedriver-win64\chromedriver.exe"
+
+# URL utilizada
+URL = "https://colintalkscrypto.com/cbbi/"
+
+options = webdriver.ChromeOptions()
+options.add_argument("--headless") #irá rodar em segundo plano
+options.add_argument("--disable-gpu") # desabilita gráficos
+
+# Acessa o serviço e o driver com as opções acima:
+servico = Service(CHROMEDRIVER_PATH)
+driver = webdriver.Chrome(service=servico, options=options)
+
+# Caso dê algum problema irá fechar o navegador
+try:
+    driver.get(URL)
+    wait = WebDriverWait(driver, 15) # irá aguardar 15 segundos
+    
+    # aguarda até o indicador ficar visível
+    indicador_confianca = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "h1.title.confidence-score-value")))
+    data_indicador = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "h2.subtitle")))
+    
+    #Extraindo o valor para texto
+    indicador_confianca = indicador_confianca.text.strip()
+    data_indicador = data_indicador.text.strip()
+    
+    # Necessário converter para float para não ter problema ao comparar os valores
+    indicador_confianca = float(indicador_confianca.replace(',','.'))
+    
+    # Adicionando as faixas de classificação
+    faixa = [0,10,30,50,80,90,100]
+    classificacao = ["Fundo do mercado", "Início de alta", "Alta em aceleração","Alta madura", "Alta avançada", "Euforia"]
+    
+    # Preciso pegar os outros indicadores
+    metric_elements = driver.find_elements(By.CSS_SELECTOR,"div.metric")
+    
+    # Cria lista indicadores 
+    indicadores = []
+    for elementos in metric_elements:
+        partes = elementos.text.strip().split("\n")
+        if len(partes) >=2:
+            valor_str = partes[0].replace('%', '').strip()
+            nome_indicador = partes[1].strip()
+            try:
+                valor = float(valor_str)
+                indicadores.append({'indicador':nome_indicador, 'valor_percentual':valor})
+            except ValueError:
+                continue
+    
+    # Adicionando classificação do indicadores
+    faixa_indicadores = [0,20,50,80,100]
+    classificacao_indicadores = ['Fundo', 'Acumulação', 'Bull em andamento', 'Topo provável']
+
+finally:
+    driver.quit()
+    
+# Adicionando os indicadores em uma tabela
+df = pd.DataFrame({'indicador_confianca': [indicador_confianca], 'data_indicador': [data_indicador]})
+
+# Adicionando classificação do índice de confiança: right = True para não excluir o último valor
+classificacao_cbbi = pd.cut([indicador_confianca], bins=faixa, right=True, labels=classificacao)[0]
+
+# Adicionando coluna com classificação do indicador
+#df["classificacao"] = pd.cut(df['indicador_confianca'], bins=faixa, right=True, labels=classificacao)
+
+# Tabela com as informações dos indicadores
+df2 = pd.DataFrame(indicadores)
+
+# Adicionando classificação dos indicadores  right = True para não excluir o último valor
+df2['classificacao_indicador'] = pd.cut(df2['valor_percentual'], bins=faixa_indicadores, right=True, labels=classificacao_indicadores)
+
+# Aqui irá adicionar a classificação do índice em todas as tabelas:
+df2['classificacao_cbbi'] = classificacao_cbbi
+df2['indice_confianca'] = indicador_confianca
+df2['data_indicador'] = data_indicador
+
+# Variáel para ordenação de colunas
+ordem_correta = ['classificacao_cbbi', 'indice_confianca', 'data_indicador']
+
+# Ordena as colunas de índice de confiança para o início da tabela
+df2 = df2[ordem_correta + [col for col in df2.columns if col not in ordem_correta]]
+
+# Apresenta estas informações em um gráfico
+plt.figure(figsize=(12,6))
+
+sns.barplot(data=df2, x='valor_percentual', y='indicador', 
+            hue='classificacao_indicador', dodge=False, palette='Set2')
+
+#Configura apresentação do gráfico
+plt.title('Classificação dos indicadores do CBBI', fontsize=14,weight='bold')
+plt.xlabel('Valor %')
+plt.ylabel('Indicador')
+plt.xlim(0,110)
+
+
+#plt.show()
+
+# Indicando as categorias mais relevantes
+#top_indicadores = df2.sort_values(by='valor_percentual', ascending=False).head(2) # irá pegar as duas maiores classificações
+
+#Salva o arquivo como imagem. Isso irá preparar o pdf e o envio
+data_hoje = datetime.today().strftime('%Y-%m-%d')
+caminho_grafico = f"cbbi_relatorio_{data_hoje}.pdf"
+caminho_imagem = f"grafico_cbbi_{data_hoje}.png"
+plt.savefig(caminho_imagem, dpi=300)
+plt.close()
+
+# Mostra os 2 indicadores mais relevantes do gráfico e depois exportará para pdf
+top_indicadores = df2.sort_values(by='valor_percentual', ascending=False).head(2)
+
+#CRia a estrutura para o PDF
+caminho_pdf = f"cbbi_relatorio_{data_hoje}.pdf"
+pdf = FPDF()
+pdf.add_page()
+pdf.set_font('Arial', 'B', 14)
+pdf.cell(0, 10, 'Relatório de Indicadores CBBI', ln=True, align='C')
+pdf.image(caminho_imagem, x=10, y=30, w=190)
+
+#INclui destaque nos 2 indicadores
+pdf.set_y(140)
+pdf.set_font('Arial', 'B', 12)
+pdf.cell(0, 10, 'Top 2 Indicadores de Confiança - CBBI:', ln=True)
+pdf.set_font('Arial', '', 10)
+
+#FAz loop para incluir os dois indicadores
+for _, row in top_indicadores.iterrows():
+    linha = f"{row['indicador']} - {row['valor_percentual']}% ({row['classificacao_indicador']})"
+    pdf.cell(0, 8, linha, ln=True)
+
+pdf.cell(0, 8, "-"*50, ln=True)
+
+#CRia nova parte no pdf com os outros indicadores
+pdf.set_font('Arial', 'B', 12)
+pdf.cell(0, 10, 'Todos os Indicadores:', ln=True)
+pdf.set_font('Arial', '', 10)
+
+#INicia loop para os demais indicadores
+for _, row in df2.iterrows():
+    linha = f"{row['indicador']} - {row['valor_percentual']}% - {row['classificacao_indicador']}"
+    pdf.cell(0, 8, linha, ln=True)
+
+pdf.output(caminho_pdf)
+
+imagem_saida = f"cbbi_relatorio_{data_hoje}.png"
+imagens = convert_from_path(caminho_pdf)
+imagens[0].save(imagem_saida, 'PNG')
+
+print(f"Relatório pronto para análise e disponível em: {os.path.abspath(caminho_pdf)}")
